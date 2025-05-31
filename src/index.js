@@ -15,10 +15,10 @@ let currentFeedbackCallback = null;
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    minWidth: 800,
-    minHeight: 600,
+    width: 1000,
+    height: 800,
+    minWidth: 1000,
+    minHeight: 800,
     resizable: true,
     frame: true,
     transparent: false,
