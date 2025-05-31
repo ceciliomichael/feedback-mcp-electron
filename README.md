@@ -14,7 +14,7 @@ npm install
 npm run make
 ```
 
-3. MCP Configuration
+3. **MCP Configuration**:
 
 Add to your AI tool configuration (works with Claude Desktop, Cursor, and other MCP clients):
 
