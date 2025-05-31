@@ -14,12 +14,7 @@ npm install
 npm run make
 ```
 
-3. **Run the MCP server**:
-```bash
-npm run start-mcp
-```
-
-## MCP Configuration
+3. MCP Configuration
 
 Add to your AI tool configuration (works with Claude Desktop, Cursor, and other MCP clients):
 
