@@ -1,0 +1,17 @@
+{
+  "name": "feedback-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for launching Electron feedback app",
+  "type": "module",
+  "main": "mcp-server.js",
+  "scripts": {
+    "start": "node mcp-server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0"
+  }
+} 

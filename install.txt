@@ -1,0 +1,71 @@
+# Installation Guide for Feedback MCP Server
+
+This guide explains how to set up and run the Feedback MCP Server with the Electron application.
+
+## Prerequisites
+
+1. Node.js (v16 or higher)
+2. npm (usually comes with Node.js)
+
+## Installation Steps
+
+1. First, install the dependencies for the Electron app:
+   ```
+   npm install
+   ```
+
+2. Package the Electron app (creates the executable in the out folder):
+   ```
+   npm run package
+   ```
+
+3. Install the MCP server dependencies:
+   ```
+   npm install --prefix mcp @modelcontextprotocol/sdk zod
+   ```
+
+## Running the MCP Server
+
+1. Start the MCP server:
+   ```
+   node mcp-server.js
+   ```
+
+2. The server will automatically launch the Electron app when needed.
+
+## Configuring with Claude Desktop or Cursor
+
+To use this MCP server with Claude Desktop or other MCP clients, add the following configuration:
+
+### Claude Desktop (Windows)
+
+Add to `%APPDATA%\Claude\claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "feedback-collector": {
+      "command": "node",
+      "args": ["C:/path/to/your/mcp-server.js"],
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
+```
+
+Replace `C:/path/to/your/mcp-server.js` with the actual path to your mcp-server.js file.
+
+## Using the MCP Tool
+
+Once configured, you can use the collect_feedback tool in your AI assistant with the following parameters:
+
+- prompt: The message to display to the user (default: "Please provide your feedback or describe your issue:")
+- title: The title of the feedback window (default: "AI Feedback Collection")
+- time_format: The format for time information (options: "full", "iso", "date", "time", "unix"; default: "full")
+- timezone: The timezone to use (defaults to local)
+
+## Troubleshooting
+
+- If you encounter issues with the Electron app not launching, ensure the path in mcp-server.js points to the correct location of the packaged app.
+- If the server can't connect to the Electron app, check that port 8080 is available or modify the port in both the server and app code.
+- For permission issues on Windows, try running the command prompt or terminal as administrator. 

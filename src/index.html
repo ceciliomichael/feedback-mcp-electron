@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Feedback Collection</title>
+    <link rel="stylesheet" href="index.css" />
+  </head>
+  <body>
+    <div class="feedback-container">
+      <div class="feedback-header">
+        <h2>AI Feedback Collection</h2>
+      </div>
+      
+      <div class="feedback-content">
+        <div class="prompt-container">
+          <div id="markdown-prompt" class="feedback-prompt markdown-content"></div>
+        </div>
+        <div class="textarea-container">
+          <textarea placeholder="Type your response here..."></textarea>
+        </div>
+      </div>
+      
+      <div class="feedback-divider"></div>
+      
+      <div class="feedback-actions">
+        <button class="btn btn-submit">Submit</button>
+        <button class="btn btn-approve">Approve</button>
+        <button class="btn btn-enough">Enough</button>
+        <button class="btn btn-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <script src="renderer.js"></script>
+  </body>
+</html>
