@@ -4,17 +4,23 @@ Collect user feedback with text and image support through an Electron app.
 
 ## Quick Setup
 
-1. **Install dependencies**:
+1. **Clone repository**:
+```bash
+git clone https://github.com/ceciliomichael/feedback-js.git
+cd feedbackjs-mcp
+```
+
+2. **Install dependencies**:
 ```bash
 npm install
 ```
 
-2. **Build the application**:
+3. **Build the application**:
 ```bash
 npm run make
 ```
 
-3. **MCP Configuration**:
+4. **MCP Configuration**:
 
 Add to your AI tool configuration (works with Claude Desktop, Cursor, and other MCP clients):
 
