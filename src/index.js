@@ -15,10 +15,10 @@ let currentFeedbackCallback = null;
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 650,
-    height: 500,
-    minWidth: 650,
-    minHeight: 500,
+    width: 800,
+    height: 600,
+    minWidth: 800,
+    minHeight: 600,
     resizable: true,
     frame: true,
     transparent: false,
@@ -110,13 +110,16 @@ const createServer = (port) => {
           currentFeedbackRequest = null;
           currentFeedbackCallback = null;
           
+          // Process the feedback data before returning
+          const processedFeedback = processFeedbackData(result.feedback);
+          
           // Return the feedback or error
           if (result.error) {
             res.statusCode = 400;
             res.end(JSON.stringify({ error: result.error }));
           } else {
             res.statusCode = 200;
-            res.end(JSON.stringify({ feedback: result.feedback }));
+            res.end(JSON.stringify({ feedback: processedFeedback }));
           }
         } catch (error) {
           console.error('Error processing feedback request:', error);
@@ -208,6 +211,17 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+
+// Function to process feedback data before sending response
+function processFeedbackData(feedbackData) {
+  // For simple string feedback (backward compatibility)
+  if (typeof feedbackData === 'string') {
+    return feedbackData;
+  }
+  
+  // For object with text and image
+  return feedbackData;
+}
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.

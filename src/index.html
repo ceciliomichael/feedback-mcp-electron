@@ -18,6 +18,22 @@
         <div class="textarea-container">
           <textarea placeholder="Type your response here..."></textarea>
         </div>
+        
+        <!-- Image upload and preview section -->
+        <div class="image-section">
+          <div class="image-upload">
+            <label for="image-input" class="image-upload-label">
+              <span class="upload-icon">+</span>
+              <span class="upload-text">Add Image</span>
+            </label>
+            <input type="file" id="image-input" accept="image/*" />
+            <div class="image-upload-hint">You can also paste from clipboard (Ctrl+V) or drag and drop an image</div>
+          </div>
+          <div class="image-preview-container" id="image-preview-container">
+            <img id="image-preview" class="image-preview" />
+            <button id="remove-image" class="remove-image-btn">×</button>
+          </div>
+        </div>
       </div>
       
       <div class="feedback-divider"></div>

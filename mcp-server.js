@@ -7,6 +7,7 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import http from "http";
+import fs from "fs";
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -24,6 +25,58 @@ const server = new McpServer({
 // Keep track of the running Electron app process
 let appProcess = null;
 let appPort = 8080; // Port for HTTP communication with the Electron app
+
+// Helper function to get formatted time information
+function getTimeInfo(format = 'full', timezone) {
+  const now = new Date();
+  let formattedTime;
+  let additionalInfo = {};
+  
+  // Apply timezone if specified
+  let timeString;
+  if (timezone) {
+    try {
+      // Try to format with the specified timezone
+      timeString = now.toLocaleString("en-US", { timeZone: timezone });
+      additionalInfo.timezone = timezone;
+    } catch (error) {
+      console.error(`Invalid timezone: ${timezone}. Using local timezone.`);
+      timeString = now.toLocaleString();
+      additionalInfo.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    }
+  } else {
+    // Use local timezone if not specified
+    timeString = now.toLocaleString();
+    additionalInfo.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  }
+  
+  // Format the time according to the requested format
+  switch (format.toLowerCase()) {
+    case "iso":
+      formattedTime = now.toISOString();
+      break;
+    case "date":
+      formattedTime = now.toLocaleDateString();
+      break;
+    case "time":
+      formattedTime = now.toLocaleTimeString();
+      break;
+    case "unix":
+      formattedTime = Math.floor(now.getTime() / 1000).toString();
+      additionalInfo.milliseconds = now.getTime();
+      break;
+    case "full":
+    default:
+      formattedTime = timeString;
+      // Add additional date components
+      additionalInfo.date = now.toLocaleDateString();
+      additionalInfo.time = now.toLocaleTimeString();
+      additionalInfo.iso = now.toISOString();
+      additionalInfo.unix = Math.floor(now.getTime() / 1000);
+  }
+  
+  return { formattedTime, additionalInfo };
+}
 
 // Tool to launch the Electron app and collect feedback
 server.tool(
@@ -79,8 +132,56 @@ server.tool(
         timezone
       });
       
+      // Get time information
+      const { formattedTime, additionalInfo } = getTimeInfo(time_format, timezone);
+      
+      // Format the time information as requested
+      const timeInfo = Object.entries(additionalInfo)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join('\n');
+      
+      // Create the response content array with requested format
+      let responseContent = [];
+      
+      // Add feedback text
+      if (typeof feedback === 'string') {
+        // Simple string feedback (old format)
+        responseContent.push({ type: "text", text: feedback });
+      } else {
+        // Object with text and possibly image (new format)
+        responseContent.push({ type: "text", text: feedback.text });
+        
+        // Add image if present
+        if (feedback.hasImage && feedback.imagePath) {
+          try {
+            const imageBuffer = fs.readFileSync(feedback.imagePath);
+            const base64Image = imageBuffer.toString('base64');
+            
+            // Remove separator
+            
+            // Add the image
+            responseContent.push({
+              type: "image",
+              data: base64Image,
+              mimeType: feedback.imageType || "image/png"
+            });
+          } catch (error) {
+            console.error("Error processing image:", error.message);
+            responseContent.push({ 
+              type: "text", 
+              text: `Note: User attached an image, but it could not be processed. Error: ${error.message}` 
+            });
+          }
+        }
+      }
+      
+      // Remove separator before time info
+      
+      // Add time information
+      responseContent.push({ type: "text", text: timeInfo });
+      
       return {
-        content: [{ type: "text", text: feedback }]
+        content: responseContent
       };
     } catch (error) {
       console.error("Error collecting feedback:", error);

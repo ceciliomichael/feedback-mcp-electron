@@ -9,12 +9,26 @@ const headerTitle = document.querySelector('.feedback-header h2');
 const promptContainer = document.querySelector('.prompt-container');
 const textareaContainer = document.querySelector('.textarea-container');
 
+// Image upload elements
+const imageInput = document.getElementById('image-input');
+const imagePreviewContainer = document.getElementById('image-preview-container');
+const imagePreview = document.getElementById('image-preview');
+const removeImageButton = document.getElementById('remove-image');
+
+// Variables to store image data
+let selectedImage = null;
+let selectedImageType = null;
+let selectedImagePath = null;
+
 // Track if the user has manually resized the window
 let userHasManuallyResized = false;
 
 // Get electron IPC renderer and markdown library
 const { ipcRenderer } = require('electron');
 const marked = require('marked');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 // Configure marked for security
 marked.setOptions({
@@ -22,6 +36,114 @@ marked.setOptions({
   gfm: true,
   breaks: true
 });
+
+// Image handling functions
+imageInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    handleImageFile(file);
+  }
+});
+
+// Function to process an image file
+function handleImageFile(file) {
+  if (file && file.type.startsWith('image/')) {
+    // Store image information
+    selectedImageType = file.type;
+    
+    // Create a temporary path for the image
+    const tempDir = path.join(os.tmpdir(), 'feedback-app');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    selectedImagePath = path.join(tempDir, `image-${Date.now()}.${file.name.split('.').pop() || 'png'}`);
+    
+    // Read the file and save it to the temp location
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const buffer = Buffer.from(e.target.result);
+      fs.writeFileSync(selectedImagePath, buffer);
+      
+      // Set the image preview
+      imagePreview.src = URL.createObjectURL(file);
+      imagePreviewContainer.style.display = 'block';
+      
+      // Adjust UI
+      adjustUIForContent();
+    };
+    reader.readAsArrayBuffer(file);
+  }
+}
+
+// Add clipboard paste support
+document.addEventListener('paste', (event) => {
+  if (event.clipboardData && event.clipboardData.items) {
+    // Check if there are any items in the clipboard
+    const items = event.clipboardData.items;
+    
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith('image/')) {
+        // We found an image
+        const file = items[i].getAsFile();
+        handleImageFile(file);
+        event.preventDefault();
+        break;
+      }
+    }
+  }
+});
+
+// Add drag and drop support
+const dropZone = document.querySelector('.feedback-container');
+
+dropZone.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  dropZone.classList.add('drag-over');
+});
+
+dropZone.addEventListener('dragleave', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  dropZone.classList.remove('drag-over');
+});
+
+dropZone.addEventListener('drop', (event) => {
+  event.preventDefault();
+  event.stopPropagation();
+  dropZone.classList.remove('drag-over');
+  
+  if (event.dataTransfer.files && event.dataTransfer.files.length > 0) {
+    const file = event.dataTransfer.files[0];
+    if (file.type.startsWith('image/')) {
+      handleImageFile(file);
+    }
+  }
+});
+
+// Remove image button
+removeImageButton.addEventListener('click', () => {
+  clearImageSelection();
+  adjustUIForContent();
+});
+
+// Clear image selection
+function clearImageSelection() {
+  selectedImage = null;
+  selectedImageType = null;
+  if (selectedImagePath && fs.existsSync(selectedImagePath)) {
+    try {
+      fs.unlinkSync(selectedImagePath);
+    } catch (error) {
+      console.error('Error removing temporary image:', error);
+    }
+  }
+  selectedImagePath = null;
+  imageInput.value = '';
+  imagePreview.src = '';
+  imagePreviewContainer.style.display = 'none';
+}
 
 // Function to adjust UI based on content size
 function adjustUIForContent() {
@@ -58,6 +180,7 @@ function requestWindowResize() {
   const textareaMinHeight = 150; // Minimum height for textarea
   const actionsHeight = 70; // Estimated height for action buttons
   const headerHeight = 60; // Estimated header height
+  const imageAreaHeight = imagePreviewContainer.style.display === 'none' ? 50 : 250; // Height for image area
   const padding = 80; // Additional padding
   
   // Calculate prompt height, but cap it at MAX_VISIBLE_LINES
@@ -65,16 +188,16 @@ function requestWindowResize() {
   const promptHeight = Math.min(rawPromptHeight, MAX_VISIBLE_LINES * LINE_HEIGHT);
   
   // Calculate ideal height based on content with limits
-  let idealHeight = promptHeight + textareaMinHeight + actionsHeight + headerHeight + padding;
+  let idealHeight = promptHeight + textareaMinHeight + actionsHeight + headerHeight + imageAreaHeight + padding;
   
   // Cap at reasonable minimum and maximum
-  idealHeight = Math.min(Math.max(idealHeight, 500), 800);
+  idealHeight = Math.min(Math.max(idealHeight, 500), 900);
   
   // Request resize from main process
   ipcRenderer.send('resize-window', 650, idealHeight);
   
   // Adjust textarea size to ensure it's always visible
-  const remainingHeight = window.innerHeight - (promptHeight + headerHeight + actionsHeight + padding);
+  const remainingHeight = window.innerHeight - (promptHeight + headerHeight + actionsHeight + imageAreaHeight + padding);
   const textareaHeight = Math.max(remainingHeight, textareaMinHeight);
   
   textareaContainer.style.height = `${textareaHeight}px`;
@@ -84,6 +207,9 @@ function requestWindowResize() {
 ipcRenderer.on('show-feedback-prompt', (event, data) => {
   // Reset manual resize flag when showing new content
   userHasManuallyResized = false;
+  
+  // Clear any previous image selection
+  clearImageSelection();
   
   // Update UI with the data
   if (data.title) {
@@ -126,9 +252,10 @@ window.addEventListener('resize', () => {
     const promptHeight = Math.min(markdownPrompt.scrollHeight, 15 * 20); // MAX_VISIBLE_LINES * LINE_HEIGHT
     const headerHeight = 60;
     const actionsHeight = 70;
+    const imageAreaHeight = imagePreviewContainer.style.display === 'none' ? 50 : 250; // Height for image area
     const padding = 80;
     
-    const remainingHeight = window.innerHeight - (promptHeight + headerHeight + actionsHeight + padding);
+    const remainingHeight = window.innerHeight - (promptHeight + headerHeight + actionsHeight + imageAreaHeight + padding);
     const textareaHeight = Math.max(remainingHeight, 150);
     
     textareaContainer.style.height = `${textareaHeight}px`;
@@ -149,14 +276,16 @@ ipcRenderer.on('resize-starting', () => {
 submitButton.addEventListener('click', () => {
   const feedback = feedbackTextarea.value.trim();
   if (feedback) {
-    // Get current timestamp based on time format
-    const timestamp = getCurrentTimestamp();
-    
-    // Format feedback with timestamp
-    const formattedFeedback = `${feedback}\n\n${timestamp}`;
+    // Prepare response object with feedback and image if present
+    const response = {
+      text: feedback,
+      hasImage: !!selectedImagePath,
+      imagePath: selectedImagePath || null,
+      imageType: selectedImageType || null
+    };
     
     // Send to main process
-    ipcRenderer.send('submit-feedback', formattedFeedback);
+    ipcRenderer.send('submit-feedback', response);
     
     // Close the window
     window.close();
@@ -166,28 +295,32 @@ submitButton.addEventListener('click', () => {
 });
 
 approveButton.addEventListener('click', () => {
-  // Get current timestamp
-  const timestamp = getCurrentTimestamp();
-  
-  // Format approval with timestamp
-  const formattedFeedback = `APPROVED: I approve this action or information.\n\n${timestamp}`;
+  // Prepare response object with approval message and image if present
+  const response = {
+    text: 'APPROVED: I approve this action or information.',
+    hasImage: !!selectedImagePath,
+    imagePath: selectedImagePath || null,
+    imageType: selectedImageType || null
+  };
   
   // Send to main process
-  ipcRenderer.send('submit-feedback', formattedFeedback);
+  ipcRenderer.send('submit-feedback', response);
   
   // Close the window
   window.close();
 });
 
 enoughButton.addEventListener('click', () => {
-  // Get current timestamp
-  const timestamp = getCurrentTimestamp();
-  
-  // Format enough with timestamp
-  const formattedFeedback = `ENOUGH: The information provided is sufficient. No further details needed.\n\n${timestamp}`;
+  // Prepare response object with enough message and image if present
+  const response = {
+    text: 'ENOUGH: The information provided is sufficient. No further details needed.',
+    hasImage: !!selectedImagePath,
+    imagePath: selectedImagePath || null,
+    imageType: selectedImageType || null
+  };
   
   // Send to main process
-  ipcRenderer.send('submit-feedback', formattedFeedback);
+  ipcRenderer.send('submit-feedback', response);
   
   // Close the window
   window.close();
