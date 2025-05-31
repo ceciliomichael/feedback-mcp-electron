@@ -8,6 +8,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import http from "http";
 import fs from "fs";
+import { randomUUID } from "crypto";
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
@@ -22,9 +23,17 @@ const server = new McpServer({
   version: "1.0.0"
 });
 
-// Keep track of the running Electron app process
-let appProcess = null;
-let appPort = 8080; // Port for HTTP communication with the Electron app
+// Track multiple app instances with a Map
+// Each instance will have its own process and port
+const appInstances = new Map();
+
+// Base port for HTTP communication
+const basePort = 8080;
+// Get an available port from a range
+function getAvailablePort() {
+  // Use a random port in the range 8080-8580 to minimize conflicts
+  return basePort + Math.floor(Math.random() * 500);
+}
 
 // Helper function to get formatted time information
 function getTimeInfo(format = 'full', timezone) {
@@ -78,6 +87,41 @@ function getTimeInfo(format = 'full', timezone) {
   return { formattedTime, additionalInfo };
 }
 
+// Function to launch a new Electron app instance
+async function launchAppInstance() {
+  const sessionId = randomUUID();
+  const port = getAvailablePort();
+  
+  console.error(`Launching new Electron app instance (sessionId: ${sessionId}, port: ${port})...`);
+  
+  // Pass parameters to the Electron app
+  const env = { ...process.env, MCP_SERVER_PORT: port.toString() };
+  
+  const appProcess = spawn(electronAppPath, [], { 
+    env,
+    detached: false,
+    windowsHide: false
+  });
+  
+  appProcess.on("error", (err) => {
+    console.error(`Failed to start Electron app (sessionId: ${sessionId}):`, err);
+    appInstances.delete(sessionId);
+  });
+  
+  appProcess.on("exit", (code) => {
+    console.error(`Electron app exited with code ${code} (sessionId: ${sessionId})`);
+    appInstances.delete(sessionId);
+  });
+  
+  // Store the instance information
+  appInstances.set(sessionId, { process: appProcess, port: port });
+  
+  // Wait a bit for the app to start
+  await new Promise(resolve => setTimeout(resolve, 1000));
+  
+  return { sessionId, port };
+}
+
 // Tool to launch the Electron app and collect feedback
 server.tool(
   "collect_feedback",
@@ -98,91 +142,78 @@ server.tool(
   },
   async ({ prompt, title, time_format, timezone }) => {
     try {
-      // Launch the Electron app if it's not running
-      if (!appProcess) {
-        console.error("Launching Electron app...");
-        
-        // Pass parameters to the Electron app
-        const env = { ...process.env, MCP_SERVER_PORT: appPort.toString() };
-        
-        appProcess = spawn(electronAppPath, [], { 
-          env,
-          detached: false, // Keep attached to this process
-          windowsHide: false // Show the window
-        });
-        
-        appProcess.on("error", (err) => {
-          console.error("Failed to start Electron app:", err);
-        });
-        
-        appProcess.on("exit", (code) => {
-          console.error(`Electron app exited with code ${code}`);
-          appProcess = null;
-        });
-        
-        // Wait a bit for the app to start
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+      // Launch a new Electron app instance for each request
+      const { sessionId, port } = await launchAppInstance();
       
       // Send the request to the Electron app and wait for feedback
-      const feedback = await sendRequestToApp({
-        prompt,
-        title,
-        time_format,
-        timezone
-      });
-      
-      // Get time information
-      const { formattedTime, additionalInfo } = getTimeInfo(time_format, timezone);
-      
-      // Format the time information as requested
-      const timeInfo = Object.entries(additionalInfo)
-        .map(([key, value]) => `${key}: ${value}`)
-        .join('\n');
-      
-      // Create the response content array with requested format
-      let responseContent = [];
-      
-      // Add feedback text
-      if (typeof feedback === 'string') {
-        // Simple string feedback (old format)
-        responseContent.push({ type: "text", text: feedback });
-      } else {
-        // Object with text and possibly image (new format)
-        responseContent.push({ type: "text", text: feedback.text });
+      try {
+        const feedback = await sendRequestToApp({
+          prompt,
+          title,
+          time_format,
+          timezone,
+          port
+        });
         
-        // Add image if present
-        if (feedback.hasImage && feedback.imagePath) {
-          try {
-            const imageBuffer = fs.readFileSync(feedback.imagePath);
-            const base64Image = imageBuffer.toString('base64');
-            
-            // Remove separator
-            
-            // Add the image
-            responseContent.push({
-              type: "image",
-              data: base64Image,
-              mimeType: feedback.imageType || "image/png"
-            });
-          } catch (error) {
-            console.error("Error processing image:", error.message);
-            responseContent.push({ 
-              type: "text", 
-              text: `Note: User attached an image, but it could not be processed. Error: ${error.message}` 
-            });
+        // Get time information
+        const { formattedTime, additionalInfo } = getTimeInfo(time_format, timezone);
+        
+        // Format the time information as requested
+        const timeInfo = Object.entries(additionalInfo)
+          .map(([key, value]) => `${key}: ${value}`)
+          .join('\n');
+        
+        // Create the response content array with requested format
+        let responseContent = [];
+        
+        // Add feedback text
+        if (typeof feedback === 'string') {
+          // Simple string feedback (old format)
+          responseContent.push({ type: "text", text: feedback });
+        } else {
+          // Object with text and possibly image (new format)
+          responseContent.push({ type: "text", text: feedback.text });
+          
+          // Add image if present
+          if (feedback.hasImage && feedback.imagePath) {
+            try {
+              const imageBuffer = fs.readFileSync(feedback.imagePath);
+              const base64Image = imageBuffer.toString('base64');
+              
+              // Add the image
+              responseContent.push({
+                type: "image",
+                data: base64Image,
+                mimeType: feedback.imageType || "image/png"
+              });
+            } catch (error) {
+              console.error("Error processing image:", error.message);
+              responseContent.push({ 
+                type: "text", 
+                text: `Note: User attached an image, but it could not be processed. Error: ${error.message}` 
+              });
+            }
           }
         }
+        
+        // Add time information
+        responseContent.push({ type: "text", text: timeInfo });
+        
+        return {
+          content: responseContent
+        };
+      } finally {
+        // Clean up the app instance when done
+        const instance = appInstances.get(sessionId);
+        if (instance && instance.process) {
+          try {
+            instance.process.kill();
+          } catch (error) {
+            console.error(`Error killing app process (sessionId: ${sessionId}):`, error);
+          }
+          appInstances.delete(sessionId);
+        }
       }
-      
-      // Remove separator before time info
-      
-      // Add time information
-      responseContent.push({ type: "text", text: timeInfo });
-      
-      return {
-        content: responseContent
-      };
     } catch (error) {
       console.error("Error collecting feedback:", error);
       return {
@@ -194,13 +225,13 @@ server.tool(
 );
 
 // Function to send a request to the Electron app and get feedback
-async function sendRequestToApp(options) {
+async function sendRequestToApp({ prompt, title, time_format, timezone, port }) {
   return new Promise((resolve, reject) => {
-    const requestData = JSON.stringify(options);
+    const requestData = JSON.stringify({ prompt, title, time_format, timezone });
     
     const req = http.request({
       hostname: "localhost",
-      port: appPort,
+      port: port,
       path: "/feedback",
       method: "POST",
       headers: {
@@ -244,9 +275,14 @@ console.error("Feedback Collector MCP server running on stdio");
 
 // Cleanup when the server is shutting down
 process.on("SIGINT", async () => {
-  if (appProcess) {
-    console.error("Shutting down Electron app...");
-    appProcess.kill();
+  // Kill all running app instances
+  for (const [sessionId, instance] of appInstances.entries()) {
+    try {
+      console.error(`Shutting down Electron app (sessionId: ${sessionId})...`);
+      instance.process.kill();
+    } catch (error) {
+      console.error(`Error shutting down app (sessionId: ${sessionId}):`, error);
+    }
   }
   process.exit(0);
 }); 
