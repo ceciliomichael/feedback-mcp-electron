@@ -205,21 +205,36 @@ function requestWindowResize() {
 
 // Handle feedback prompt from main process
 ipcRenderer.on('show-feedback-prompt', (event, data) => {
+  console.log('Received data from main process:', data);
+  
   // Reset manual resize flag when showing new content
   userHasManuallyResized = false;
   
   // Clear any previous image selection
   clearImageSelection();
   
+  // Validate data with defaults
+  const validatedData = {
+    title: "AI Feedback Collection",
+    prompt: "Please provide your feedback or describe your issue:",
+    ...data
+  };
+  
   // Update UI with the data
-  if (data.title) {
-    headerTitle.textContent = data.title;
-    document.title = data.title;
+  if (validatedData.title) {
+    headerTitle.textContent = validatedData.title;
+    document.title = validatedData.title;
   }
   
-  if (data.prompt) {
-    // Render the prompt as markdown
-    markdownPrompt.innerHTML = marked.parse(data.prompt);
+  if (validatedData.prompt) {
+    try {
+      // Render the prompt as markdown
+      markdownPrompt.innerHTML = marked.parse(validatedData.prompt);
+    } catch (error) {
+      console.error("Error parsing markdown:", error);
+      // Fallback to plain text if markdown parsing fails
+      markdownPrompt.textContent = validatedData.prompt;
+    }
     
     // Adjust UI based on content size with a small delay for rendering
     setTimeout(() => {

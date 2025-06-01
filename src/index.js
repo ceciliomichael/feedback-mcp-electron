@@ -16,9 +16,9 @@ const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1000,
-    height: 800,
+    height: 700,
     minWidth: 1000,
-    minHeight: 800,
+    minHeight: 700,
     resizable: true,
     frame: true,
     transparent: false,
@@ -63,7 +63,30 @@ const createServer = (port) => {
       
       req.on('end', async () => {
         try {
-          const requestData = JSON.parse(body);
+          let requestData;
+          try {
+            requestData = JSON.parse(body);
+          } catch (parseError) {
+            console.error('Error parsing request JSON:', parseError);
+            requestData = {}; // Default empty object if parsing fails
+          }
+          
+          // Ensure required parameters have default values
+          requestData = {
+            prompt: "Please provide your feedback:",
+            title: "AI Feedback Collection",
+            time_format: "full",
+            ...requestData // Overlay with actual values if provided
+          };
+          
+          // Validate parameters
+          if (!requestData.prompt || typeof requestData.prompt !== 'string') {
+            requestData.prompt = "Please provide your feedback:";
+          }
+          
+          if (!requestData.title || typeof requestData.title !== 'string') {
+            requestData.title = "AI Feedback Collection";
+          }
           
           // Estimate window size based on prompt length
           if (requestData.prompt) {
@@ -100,8 +123,24 @@ const createServer = (port) => {
             }
           }
           
-          // Send request data to renderer
-          mainWindow.webContents.send('show-feedback-prompt', requestData);
+          // Log what we're sending to the renderer
+          console.log('Sending data to renderer:', JSON.stringify(requestData));
+          
+          // Ensure window is fully loaded before sending data
+          if (mainWindow.webContents.isLoading()) {
+            // Wait for the window to finish loading
+            mainWindow.webContents.once('did-finish-load', () => {
+              // Small delay to ensure renderer is ready
+              setTimeout(() => {
+                mainWindow.webContents.send('show-feedback-prompt', requestData);
+              }, 500);
+            });
+          } else {
+            // Small delay to ensure renderer is ready even if already loaded
+            setTimeout(() => {
+              mainWindow.webContents.send('show-feedback-prompt', requestData);
+            }, 500);
+          }
           
           // Wait for the feedback
           const result = await feedbackPromise;
