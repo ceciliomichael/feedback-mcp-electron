@@ -164,7 +164,7 @@ function submitAutoFeedback() {
   const feedback = feedbackTextarea.value.trim();
   
   // Use appropriate message based on whether input is blank
-  const responseText = feedback || "AFK: User is away from keyboard. Proceed as you see fit within the request scope.";
+  const responseText = feedback || "User is away from keyboard. Proceed as you see fit within the request scope.";
   
   // Prepare response object with feedback and image if present
   const response = {
@@ -754,7 +754,7 @@ submitButton.addEventListener('click', () => {
 approveButton.addEventListener('click', () => {
   // Prepare response object with approval message and image if present
   const response = {
-    text: 'APPROVED: I approve this action or information.',
+    text: 'I approve this action or information.',
     hasImage: !!selectedImagePath,
     imagePath: selectedImagePath || null,
     imageType: selectedImageType || null
@@ -770,7 +770,7 @@ approveButton.addEventListener('click', () => {
 enoughButton.addEventListener('click', () => {
   // Prepare response object with enough message and image if present
   const response = {
-    text: 'ENOUGH: The information provided is sufficient. No further details needed.',
+    text: 'The information provided is sufficient. No further details needed.',
     hasImage: !!selectedImagePath,
     imagePath: selectedImagePath || null,
     imageType: selectedImageType || null
@@ -785,7 +785,7 @@ enoughButton.addEventListener('click', () => {
 
 cancelButton.addEventListener('click', () => {
   // Send cancel event to main process with message
-  ipcRenderer.send('cancel-feedback', 'CANCELLED: Operation cancelled by user.');
+  ipcRenderer.send('cancel-feedback', 'Operation cancelled by user, please do not continue with the operation.');
   
   // Close the window
   window.close();
@@ -794,7 +794,7 @@ cancelButton.addEventListener('click', () => {
 // Listen for window close event
 window.addEventListener('beforeunload', () => {
   // If the window is closed without clicking a button, send a cancel message
-  ipcRenderer.send('cancel-feedback', 'CANCELLED: Window was closed without providing feedback.');
+  ipcRenderer.send('cancel-feedback', 'Window was closed without providing feedback. Please terminate and do not continue with the operation.');
 });
 
 // Helper function to get formatted timestamp
