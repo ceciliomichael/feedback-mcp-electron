@@ -145,7 +145,7 @@ function toggleTimer() {
 }
 
 function resetTimer() {
-  timerSeconds = 15;
+  timerSeconds = 30;
   timerPaused = false;
   updateTimerDisplay();
   timerDisplay.parentElement.classList.remove('warning');
