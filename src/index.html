@@ -9,6 +9,23 @@
     <div class="feedback-container">
       <div class="feedback-header">
         <h2>AI Feedback Collection</h2>
+        <!-- Timer UI -->
+        <div class="timer-container">
+          <div class="timer-display">
+            <span id="timer-seconds">15</span>s
+          </div>
+          <button id="timer-toggle" class="timer-toggle" title="Pause/Resume Timer">
+            <!-- Pause SVG Icon -->
+            <svg id="pause-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <rect x="6" y="4" width="4" height="16"/>
+              <rect x="14" y="4" width="4" height="16"/>
+            </svg>
+            <!-- Play SVG Icon (hidden by default) -->
+            <svg id="play-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="display: none;">
+              <polygon points="5,3 19,12 5,21"/>
+            </svg>
+          </button>
+        </div>
       </div>
       
       <div class="feedback-content">

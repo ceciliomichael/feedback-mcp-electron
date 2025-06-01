@@ -9,6 +9,17 @@ const headerTitle = document.querySelector('.feedback-header h2');
 const promptContainer = document.querySelector('.prompt-container');
 const textareaContainer = document.querySelector('.textarea-container');
 
+// Timer elements
+const timerDisplay = document.getElementById('timer-seconds');
+const timerToggle = document.getElementById('timer-toggle');
+const pauseIcon = document.getElementById('pause-icon');
+const playIcon = document.getElementById('play-icon');
+
+// Timer variables
+let timerSeconds = 15;
+let timerInterval = null;
+let timerPaused = false;
+
 // Snippet elements
 const snippetList = document.getElementById('snippet-list');
 const snippetDropdownBtn = document.getElementById('snippet-dropdown-btn');
@@ -90,6 +101,86 @@ marked.setOptions({
   gfm: true,
   breaks: true
 });
+
+// Timer functions
+function startTimer() {
+  // Clear any existing timer
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+  
+  timerInterval = setInterval(() => {
+    if (!timerPaused) {
+      timerSeconds--;
+      updateTimerDisplay();
+      
+      if (timerSeconds <= 5) {
+        timerDisplay.parentElement.classList.add('warning');
+      }
+      
+      if (timerSeconds <= 0) {
+        clearInterval(timerInterval);
+        submitAutoFeedback();
+      }
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  timerDisplay.textContent = timerSeconds;
+}
+
+function toggleTimer() {
+  timerPaused = !timerPaused;
+  
+  if (timerPaused) {
+    // Show play icon
+    pauseIcon.style.display = 'none';
+    playIcon.style.display = 'block';
+  } else {
+    // Show pause icon
+    pauseIcon.style.display = 'block';
+    playIcon.style.display = 'none';
+  }
+}
+
+function resetTimer() {
+  timerSeconds = 15;
+  timerPaused = false;
+  updateTimerDisplay();
+  timerDisplay.parentElement.classList.remove('warning');
+  pauseIcon.style.display = 'block';
+  playIcon.style.display = 'none';
+  
+  // Restart the timer
+  if (timerInterval) {
+    clearInterval(timerInterval);
+  }
+  startTimer();
+}
+
+function submitAutoFeedback() {
+  // Get the current text from the textarea
+  const feedback = feedbackTextarea.value.trim();
+  
+  // Use appropriate message based on whether input is blank
+  const responseText = feedback || "AFK: User is away from keyboard. Proceed as you see fit within the request scope.";
+  
+  // Prepare response object with feedback and image if present
+  const response = {
+    text: responseText,
+    hasImage: !!selectedImagePath,
+    imagePath: selectedImagePath || null,
+    imageType: selectedImageType || null,
+    autoSubmitted: true
+  };
+  
+  // Send to main process
+  ipcRenderer.send('submit-feedback', response);
+  
+  // Close the window
+  window.close();
+}
 
 // Toggle snippet dropdown
 function toggleSnippetDropdown() {
@@ -596,6 +687,9 @@ ipcRenderer.on('show-feedback-prompt', (event, data) => {
   // Clear any previous text and focus
   feedbackTextarea.value = '';
   ensureFocus();
+  
+  // Start the timer
+  resetTimer();
 });
 
 // Handle window resize events - detect manual resizing
@@ -737,4 +831,7 @@ feedbackTextarea.addEventListener('keydown', (event) => {
 });
 
 // Initialize snippets when the app loads
-loadSnippets(); 
+loadSnippets();
+
+// Event listeners for timer
+timerToggle.addEventListener('click', toggleTimer); 

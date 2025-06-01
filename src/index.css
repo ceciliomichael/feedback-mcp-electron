@@ -40,6 +40,54 @@ body {
   font-weight: 500;
 }
 
+/* Timer styles */
+.timer-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timer-display {
+  font-size: 16px;
+  font-weight: 500;
+  color: #555;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  padding: 4px 8px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.timer-display.warning {
+  color: #ea4335;
+  font-weight: bold;
+}
+
+.timer-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  color: #555;
+  padding: 0;
+  transition: background-color 0.2s ease;
+}
+
+.timer-toggle:hover {
+  background-color: #e8e8e8;
+}
+
+.timer-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Snippet section styles */
 .snippet-section {
   padding: 10px 20px;
