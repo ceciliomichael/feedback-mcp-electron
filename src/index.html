@@ -87,6 +87,24 @@
         </div>
       </div>
     </div>
+    
+    <!-- Delete confirmation modal -->
+    <div id="delete-confirm-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Delete Snippet</h3>
+          <span class="close-modal" data-modal="delete-confirm-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this snippet?</p>
+          <p class="snippet-to-delete-name"></p>
+        </div>
+        <div class="modal-footer">
+          <button id="confirm-delete-btn" class="btn btn-cancel">Delete</button>
+          <button id="cancel-delete-btn" class="btn">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <script src="renderer.js"></script>
   </body>

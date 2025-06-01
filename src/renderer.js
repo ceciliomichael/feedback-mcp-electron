@@ -23,6 +23,13 @@ const saveSnippetBtn = document.getElementById('save-snippet-btn');
 const cancelSnippetBtn = document.getElementById('cancel-snippet-btn');
 const closeModalBtn = document.querySelector('.close-modal');
 
+// Delete confirmation modal elements
+const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+const snippetToDeleteName = document.querySelector('.snippet-to-delete-name');
+const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
+const closeDeleteModalBtn = document.querySelector('[data-modal="delete-confirm-modal"]');
+
 // Image upload elements
 const imageInput = document.getElementById('image-input');
 const imagePreviewContainer = document.getElementById('image-preview-container');
@@ -41,6 +48,7 @@ let userHasManuallyResized = false;
 let snippets = [];
 let editingSnippetId = null;
 let isDropdownOpen = false;
+let snippetToDeleteId = null;
 
 // Get electron IPC renderer and markdown library
 const { ipcRenderer } = require('electron');
@@ -199,11 +207,28 @@ function renderSnippetList() {
   }
 }
 
+// Function to ensure focus on textarea
+function ensureFocus() {
+  // Force focus on the textarea
+  feedbackTextarea.focus();
+  
+  // If focus didn't work, try again with a delay
+  setTimeout(() => {
+    if (document.activeElement !== feedbackTextarea) {
+      feedbackTextarea.focus();
+    }
+  }, 100);
+}
+
 // Use a snippet (insert its content into the textarea)
 function useSnippet(snippet) {
   feedbackTextarea.value = snippet.content;
-  feedbackTextarea.focus();
   closeSnippetDropdown();
+  
+  // Focus and set cursor at the end of the content
+  ensureFocus();
+  feedbackTextarea.selectionStart = feedbackTextarea.value.length;
+  feedbackTextarea.selectionEnd = feedbackTextarea.value.length;
 }
 
 // Create a new snippet
@@ -234,11 +259,38 @@ function updateSnippet(id, name, content) {
 
 // Delete a snippet
 function deleteSnippet(id) {
-  if (confirm('Are you sure you want to delete this snippet?')) {
-    snippets = snippets.filter(s => s.id !== id);
+  // Find the snippet to delete
+  const snippetToDelete = snippets.find(s => s.id === id);
+  if (!snippetToDelete) return;
+  
+  // Set the snippet ID to delete and show the confirmation modal
+  snippetToDeleteId = id;
+  snippetToDeleteName.textContent = `"${snippetToDelete.name}"`;
+  deleteConfirmModal.style.display = 'block';
+}
+
+// Confirm deletion of a snippet
+function confirmDeleteSnippet() {
+  if (snippetToDeleteId) {
+    // Remove the snippet from the array
+    snippets = snippets.filter(s => s.id !== snippetToDeleteId);
+    
+    // Save to file and update the UI
     saveSnippets();
     renderSnippetList();
+    
+    // Close the modal
+    closeDeleteConfirmModal();
   }
+}
+
+// Close the delete confirmation modal
+function closeDeleteConfirmModal() {
+  deleteConfirmModal.style.display = 'none';
+  snippetToDeleteId = null;
+  
+  // Focus back to the textarea
+  ensureFocus();
 }
 
 // Open modal to create a new snippet
@@ -266,6 +318,9 @@ function openEditSnippetModal(snippet) {
 function closeSnippetModal() {
   snippetModal.style.display = 'none';
   editingSnippetId = null;
+  
+  // Focus back to the textarea
+  ensureFocus();
 }
 
 // Save the current snippet (create or update)
@@ -299,16 +354,26 @@ saveSnippetBtn.addEventListener('click', saveSnippet);
 cancelSnippetBtn.addEventListener('click', closeSnippetModal);
 closeModalBtn.addEventListener('click', closeSnippetModal);
 
-// Close dropdown and modal when clicking outside
+// Event listeners for delete confirmation modal
+confirmDeleteBtn.addEventListener('click', confirmDeleteSnippet);
+cancelDeleteBtn.addEventListener('click', closeDeleteConfirmModal);
+closeDeleteModalBtn.addEventListener('click', closeDeleteConfirmModal);
+
+// Close modals when clicking outside
 document.addEventListener('click', (e) => {
   // Close dropdown when clicking outside
   if (isDropdownOpen && !e.target.closest('.snippet-dropdown') && !e.target.closest('#snippet-dropdown-btn')) {
     closeSnippetDropdown();
   }
   
-  // Close modal when clicking outside
+  // Close snippet modal when clicking outside
   if (e.target === snippetModal) {
     closeSnippetModal();
+  }
+  
+  // Close delete confirmation modal when clicking outside
+  if (e.target === deleteConfirmModal) {
+    closeDeleteConfirmModal();
   }
 });
 
@@ -530,7 +595,7 @@ ipcRenderer.on('show-feedback-prompt', (event, data) => {
   
   // Clear any previous text and focus
   feedbackTextarea.value = '';
-  feedbackTextarea.focus();
+  ensureFocus();
 });
 
 // Handle window resize events - detect manual resizing
@@ -656,7 +721,9 @@ function getCurrentTimestamp() {
 }
 
 // Focus the textarea when the app loads
-feedbackTextarea.focus();
+window.addEventListener('DOMContentLoaded', () => {
+  ensureFocus();
+});
 
 // Add keyboard shortcut for submit (Ctrl+Enter)
 feedbackTextarea.addEventListener('keydown', (event) => {

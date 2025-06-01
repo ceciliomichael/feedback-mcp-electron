@@ -241,6 +241,31 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Smaller modal for delete confirmation */
+#delete-confirm-modal .modal-content {
+  max-width: 350px;
+  margin: 15% auto;
+}
+
+#delete-confirm-modal .modal-body {
+  padding: 15px 20px;
+}
+
+#delete-confirm-modal .modal-footer {
+  padding: 10px 20px;
+}
+
+#delete-confirm-modal p {
+  margin: 5px 0;
+}
+
+.snippet-to-delete-name {
+  font-weight: 500;
+  color: #ea4335;
+  margin-top: 10px !important;
+  font-size: 14px;
+}
+
 .modal-header {
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
