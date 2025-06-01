@@ -313,13 +313,25 @@ function ensureFocus() {
 
 // Use a snippet (insert its content into the textarea)
 function useSnippet(snippet) {
-  feedbackTextarea.value = snippet.content;
+  // Get current text and cursor position
+  const currentText = feedbackTextarea.value;
+  const cursorPosition = feedbackTextarea.selectionStart;
+  
+  // Insert snippet content at cursor position with two newlines before it
+  const snippetWithNewlines = '\n' + snippet.content;
+  const newText = currentText.slice(0, cursorPosition) + snippetWithNewlines + currentText.slice(cursorPosition);
+  feedbackTextarea.value = newText;
+  
+  // Close the dropdown
   closeSnippetDropdown();
   
-  // Focus and set cursor at the end of the content
-  ensureFocus();
-  feedbackTextarea.selectionStart = feedbackTextarea.value.length;
-  feedbackTextarea.selectionEnd = feedbackTextarea.value.length;
+  // Focus and set cursor after the inserted snippet
+  setTimeout(() => {
+    feedbackTextarea.focus();
+    const newCursorPosition = cursorPosition + snippetWithNewlines.length;
+    feedbackTextarea.selectionStart = newCursorPosition;
+    feedbackTextarea.selectionEnd = newCursorPosition;
+  }, 100);
 }
 
 // Create a new snippet
