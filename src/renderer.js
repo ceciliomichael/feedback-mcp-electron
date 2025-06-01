@@ -16,7 +16,7 @@ const pauseIcon = document.getElementById('pause-icon');
 const playIcon = document.getElementById('play-icon');
 
 // Timer variables
-let timerSeconds = 15;
+let timerSeconds = 30;
 let timerInterval = null;
 let timerPaused = false;
 
