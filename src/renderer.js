@@ -9,6 +9,20 @@ const headerTitle = document.querySelector('.feedback-header h2');
 const promptContainer = document.querySelector('.prompt-container');
 const textareaContainer = document.querySelector('.textarea-container');
 
+// Snippet elements
+const snippetList = document.getElementById('snippet-list');
+const snippetDropdownBtn = document.getElementById('snippet-dropdown-btn');
+const snippetDropdown = document.getElementById('snippet-dropdown');
+const dropdownArrow = snippetDropdownBtn.querySelector('.dropdown-arrow');
+const createSnippetBtn = document.getElementById('create-snippet-btn');
+const snippetModal = document.getElementById('snippet-modal');
+const modalTitle = document.getElementById('modal-title');
+const snippetNameInput = document.getElementById('snippet-name');
+const snippetContentInput = document.getElementById('snippet-content');
+const saveSnippetBtn = document.getElementById('save-snippet-btn');
+const cancelSnippetBtn = document.getElementById('cancel-snippet-btn');
+const closeModalBtn = document.querySelector('.close-modal');
+
 // Image upload elements
 const imageInput = document.getElementById('image-input');
 const imagePreviewContainer = document.getElementById('image-preview-container');
@@ -23,6 +37,11 @@ let selectedImagePath = null;
 // Track if the user has manually resized the window
 let userHasManuallyResized = false;
 
+// Snippet management variables
+let snippets = [];
+let editingSnippetId = null;
+let isDropdownOpen = false;
+
 // Get electron IPC renderer and markdown library
 const { ipcRenderer } = require('electron');
 const marked = require('marked');
@@ -30,11 +49,275 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+// Get app path for storing snippets
+let snippetsFilePath;
+try {
+  // Try to get the app path
+  let appPath;
+  try {
+    // First try with electron remote
+    const remote = require('@electron/remote');
+    appPath = remote.app.getAppPath();
+  } catch (remoteError) {
+    // Fallback to a known location if remote is not available
+    console.error('Error getting remote app:', remoteError);
+    appPath = path.join(os.homedir(), '.feedback-app');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(appPath)) {
+      fs.mkdirSync(appPath, { recursive: true });
+    }
+  }
+  
+  snippetsFilePath = path.join(appPath, 'snippets.json');
+} catch (error) {
+  console.error('Error setting up snippets file path:', error);
+  // Fallback to temp directory
+  snippetsFilePath = path.join(os.tmpdir(), 'feedback-app-snippets.json');
+}
+
 // Configure marked for security
 marked.setOptions({
   sanitize: true,
   gfm: true,
   breaks: true
+});
+
+// Toggle snippet dropdown
+function toggleSnippetDropdown() {
+  if (isDropdownOpen) {
+    closeSnippetDropdown();
+  } else {
+    openSnippetDropdown();
+  }
+}
+
+// Open snippet dropdown
+function openSnippetDropdown() {
+  snippetDropdown.classList.add('show');
+  dropdownArrow.classList.add('open');
+  isDropdownOpen = true;
+}
+
+// Close snippet dropdown
+function closeSnippetDropdown() {
+  snippetDropdown.classList.remove('show');
+  dropdownArrow.classList.remove('open');
+  isDropdownOpen = false;
+}
+
+// Load snippets from file
+function loadSnippets() {
+  try {
+    // Check if file exists
+    if (fs.existsSync(snippetsFilePath)) {
+      const data = fs.readFileSync(snippetsFilePath, 'utf8');
+      snippets = JSON.parse(data);
+    } else {
+      // Create empty snippets file if it doesn't exist
+      snippets = [];
+      fs.writeFileSync(snippetsFilePath, JSON.stringify(snippets, null, 2), 'utf8');
+    }
+  } catch (error) {
+    console.error('Error loading snippets:', error);
+    snippets = [];
+  }
+  renderSnippetList();
+}
+
+// Save snippets to file
+function saveSnippets() {
+  try {
+    fs.writeFileSync(snippetsFilePath, JSON.stringify(snippets, null, 2), 'utf8');
+  } catch (error) {
+    console.error('Error saving snippets:', error);
+    // Fallback to localStorage if file write fails
+    try {
+      localStorage.setItem('feedback-snippets', JSON.stringify(snippets));
+    } catch (localStorageError) {
+      console.error('Error saving to localStorage:', localStorageError);
+    }
+  }
+}
+
+// Render the snippet list
+function renderSnippetList() {
+  // Clear the list
+  snippetList.innerHTML = '';
+  
+  if (snippets.length === 0) {
+    // Show "No snippets" message if there are no snippets
+    const noSnippetsMessage = document.createElement('div');
+    noSnippetsMessage.className = 'no-snippets-message';
+    noSnippetsMessage.textContent = 'No snippets yet';
+    snippetList.appendChild(noSnippetsMessage);
+    return;
+  }
+  
+  // Add each snippet to the list
+  snippets.forEach(snippet => {
+    const snippetItem = document.createElement('div');
+    snippetItem.className = 'snippet-item';
+    snippetItem.innerHTML = `
+      <span class="snippet-item-name">${snippet.name}</span>
+      <div class="snippet-item-actions">
+        <button class="snippet-action edit-snippet" title="Edit">✎</button>
+        <button class="snippet-action delete-snippet" title="Delete">×</button>
+      </div>
+    `;
+    
+    // Add click event to use the snippet
+    snippetItem.addEventListener('click', (e) => {
+      // Only trigger if not clicking on action buttons
+      if (!e.target.closest('.snippet-item-actions')) {
+        useSnippet(snippet);
+      }
+    });
+    
+    // Add edit button event
+    const editBtn = snippetItem.querySelector('.edit-snippet');
+    editBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openEditSnippetModal(snippet);
+    });
+    
+    // Add delete button event
+    const deleteBtn = snippetItem.querySelector('.delete-snippet');
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteSnippet(snippet.id);
+    });
+    
+    snippetList.appendChild(snippetItem);
+  });
+  
+  // Apply scrollable class if more than 5 snippets
+  if (snippets.length > 5) {
+    snippetList.classList.add('scrollable');
+  } else {
+    snippetList.classList.remove('scrollable');
+  }
+}
+
+// Use a snippet (insert its content into the textarea)
+function useSnippet(snippet) {
+  feedbackTextarea.value = snippet.content;
+  feedbackTextarea.focus();
+  closeSnippetDropdown();
+}
+
+// Create a new snippet
+function createSnippet(name, content) {
+  const newSnippet = {
+    id: Date.now().toString(),
+    name: name,
+    content: content,
+    createdAt: new Date().toISOString()
+  };
+  
+  snippets.push(newSnippet);
+  saveSnippets();
+  renderSnippetList();
+}
+
+// Update an existing snippet
+function updateSnippet(id, name, content) {
+  const index = snippets.findIndex(s => s.id === id);
+  if (index !== -1) {
+    snippets[index].name = name;
+    snippets[index].content = content;
+    snippets[index].updatedAt = new Date().toISOString();
+    saveSnippets();
+    renderSnippetList();
+  }
+}
+
+// Delete a snippet
+function deleteSnippet(id) {
+  if (confirm('Are you sure you want to delete this snippet?')) {
+    snippets = snippets.filter(s => s.id !== id);
+    saveSnippets();
+    renderSnippetList();
+  }
+}
+
+// Open modal to create a new snippet
+function openCreateSnippetModal() {
+  modalTitle.textContent = 'Create Snippet';
+  snippetNameInput.value = '';
+  snippetContentInput.value = feedbackTextarea.value || '';
+  editingSnippetId = null;
+  snippetModal.style.display = 'block';
+  snippetNameInput.focus();
+  closeSnippetDropdown();
+}
+
+// Open modal to edit an existing snippet
+function openEditSnippetModal(snippet) {
+  modalTitle.textContent = 'Edit Snippet';
+  snippetNameInput.value = snippet.name;
+  snippetContentInput.value = snippet.content;
+  editingSnippetId = snippet.id;
+  snippetModal.style.display = 'block';
+  snippetNameInput.focus();
+}
+
+// Close the snippet modal
+function closeSnippetModal() {
+  snippetModal.style.display = 'none';
+  editingSnippetId = null;
+}
+
+// Save the current snippet (create or update)
+function saveSnippet() {
+  const name = snippetNameInput.value.trim();
+  const content = snippetContentInput.value.trim();
+  
+  if (!name) {
+    alert('Please enter a name for the snippet');
+    return;
+  }
+  
+  if (!content) {
+    alert('Please enter content for the snippet');
+    return;
+  }
+  
+  if (editingSnippetId) {
+    updateSnippet(editingSnippetId, name, content);
+  } else {
+    createSnippet(name, content);
+  }
+  
+  closeSnippetModal();
+}
+
+// Event listeners for snippet functionality
+snippetDropdownBtn.addEventListener('click', toggleSnippetDropdown);
+createSnippetBtn.addEventListener('click', openCreateSnippetModal);
+saveSnippetBtn.addEventListener('click', saveSnippet);
+cancelSnippetBtn.addEventListener('click', closeSnippetModal);
+closeModalBtn.addEventListener('click', closeSnippetModal);
+
+// Close dropdown and modal when clicking outside
+document.addEventListener('click', (e) => {
+  // Close dropdown when clicking outside
+  if (isDropdownOpen && !e.target.closest('.snippet-dropdown') && !e.target.closest('#snippet-dropdown-btn')) {
+    closeSnippetDropdown();
+  }
+  
+  // Close modal when clicking outside
+  if (e.target === snippetModal) {
+    closeSnippetModal();
+  }
+});
+
+// Add keyboard shortcut for saving snippet (Ctrl+Enter in modal)
+snippetContentInput.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+    event.preventDefault();
+    saveSnippet();
+  }
 });
 
 // Image handling functions
@@ -384,4 +667,7 @@ feedbackTextarea.addEventListener('keydown', (event) => {
     // Simulate click on submit button
     submitButton.click();
   }
-}); 
+});
+
+// Initialize snippets when the app loads
+loadSnippets(); 

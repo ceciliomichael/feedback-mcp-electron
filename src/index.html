@@ -39,10 +39,52 @@
       <div class="feedback-divider"></div>
       
       <div class="feedback-actions">
-        <button class="btn btn-submit">Submit</button>
-        <button class="btn btn-approve">Approve</button>
-        <button class="btn btn-enough">Enough</button>
-        <button class="btn btn-cancel">Cancel</button>
+        <!-- Snippet dropdown section -->
+        <div class="snippet-dropdown-container">
+          <button id="snippet-dropdown-btn" class="btn btn-snippet">
+            Snippets <span class="dropdown-arrow">▼</span>
+          </button>
+          <div class="snippet-dropdown" id="snippet-dropdown">
+            <div class="snippet-header">
+              <span>Snippets</span>
+              <button id="create-snippet-btn" class="snippet-action-btn" title="Create New Snippet">+</button>
+            </div>
+            <div class="snippet-list" id="snippet-list">
+              <!-- Snippets will be populated here -->
+              <div class="no-snippets-message">No snippets yet</div>
+            </div>
+          </div>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-submit">Submit</button>
+          <button class="btn btn-approve">Approve</button>
+          <button class="btn btn-enough">Enough</button>
+          <button class="btn btn-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Snippet modal templates -->
+    <div id="snippet-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">Create Snippet</h3>
+          <span class="close-modal">&times;</span>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="snippet-name">Name:</label>
+            <input type="text" id="snippet-name" placeholder="Enter snippet name">
+          </div>
+          <div class="form-group">
+            <label for="snippet-content">Content:</label>
+            <textarea id="snippet-content" placeholder="Enter snippet content"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="save-snippet-btn" class="btn btn-submit">Save</button>
+          <button id="cancel-snippet-btn" class="btn btn-cancel">Cancel</button>
+        </div>
       </div>
     </div>
 
