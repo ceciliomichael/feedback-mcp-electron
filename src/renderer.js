@@ -41,6 +41,12 @@ const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
 const cancelDeleteBtn = document.getElementById('cancel-delete-btn');
 const closeDeleteModalBtn = document.querySelector('[data-modal="delete-confirm-modal"]');
 
+// Error modal elements
+const errorModal = document.getElementById('error-modal');
+const errorMessage = document.getElementById('error-message');
+const errorOkBtn = document.getElementById('error-ok-btn');
+const closeErrorModalBtn = document.querySelector('[data-modal="error-modal"]');
+
 // Image upload elements
 const imageInput = document.getElementById('image-input');
 const imagePreviewContainer = document.getElementById('image-preview-container');
@@ -318,7 +324,7 @@ function useSnippet(snippet) {
   const cursorPosition = feedbackTextarea.selectionStart;
   
   // Insert snippet content at cursor position with two newlines before it
-  const snippetWithNewlines = '\n' + snippet.content;
+  const snippetWithNewlines = '\n\n' + snippet.content;
   const newText = currentText.slice(0, cursorPosition) + snippetWithNewlines + currentText.slice(cursorPosition);
   feedbackTextarea.value = newText;
   
@@ -477,6 +483,11 @@ document.addEventListener('click', (e) => {
   // Close delete confirmation modal when clicking outside
   if (e.target === deleteConfirmModal) {
     closeDeleteConfirmModal();
+  }
+  
+  // Close error modal when clicking outside
+  if (e.target === errorModal) {
+    closeErrorModal();
   }
 });
 
@@ -741,6 +752,20 @@ ipcRenderer.on('resize-starting', () => {
   window.isAutoResizing = true;
 });
 
+// Show error modal with a message
+function showErrorModal(message) {
+  errorMessage.textContent = message;
+  errorModal.style.display = 'block';
+}
+
+// Close the error modal
+function closeErrorModal() {
+  errorModal.style.display = 'none';
+  
+  // Focus back to the textarea
+  ensureFocus();
+}
+
 // Button event handlers
 submitButton.addEventListener('click', () => {
   const feedback = feedbackTextarea.value.trim();
@@ -759,7 +784,8 @@ submitButton.addEventListener('click', () => {
     // Close the window
     window.close();
   } else {
-    alert('Please enter feedback before submitting.');
+    // Show error modal instead of alert
+    showErrorModal('Please enter feedback before submitting.');
   }
 });
 
@@ -846,4 +872,8 @@ feedbackTextarea.addEventListener('keydown', (event) => {
 loadSnippets();
 
 // Event listeners for timer
-timerToggle.addEventListener('click', toggleTimer); 
+timerToggle.addEventListener('click', toggleTimer);
+
+// Event listeners for error modal
+errorOkBtn.addEventListener('click', closeErrorModal);
+closeErrorModalBtn.addEventListener('click', closeErrorModal); 

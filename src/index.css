@@ -663,3 +663,23 @@ textarea {
   margin-top: 5px;
   width: 100%;
 }
+
+/* Error modal styles */
+#error-modal .modal-content {
+  max-width: 350px;
+  margin: 15% auto;
+}
+
+#error-modal .modal-body {
+  padding: 15px 20px;
+}
+
+#error-modal .modal-footer {
+  padding: 10px 20px;
+  justify-content: center;
+}
+
+#error-modal p {
+  margin: 10px 0;
+  text-align: center;
+}
