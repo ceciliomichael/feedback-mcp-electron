@@ -9,13 +9,35 @@ import { fileURLToPath } from "url";
 import http from "http";
 import fs from "fs";
 import { randomUUID } from "crypto";
+import os from "os";
 
 // Get the directory name of the current module
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Path to the Electron app executable
-const electronAppPath = path.join(__dirname, "out", "my-app-win32-x64", "my-app.exe");
+// Detect platform and set appropriate executable path
+const platform = os.platform();
+let electronAppPath;
+
+switch (platform) {
+  case 'win32':
+    electronAppPath = path.join(__dirname, "out", "my-app-win32-x64", "my-app.exe");
+    break;
+  case 'darwin':
+    electronAppPath = path.join(__dirname, "out", "my-app-darwin-x64", "my-app.app", "Contents", "MacOS", "my-app");
+    break;
+  case 'linux':
+    electronAppPath = path.join(__dirname, "out", "my-app-linux-x64", "my-app");
+    break;
+  default:
+    throw new Error(`Unsupported platform: ${platform}`);
+}
+
+// Check if the executable exists
+if (!fs.existsSync(electronAppPath)) {
+  console.error(`Electron app executable not found at: ${electronAppPath}`);
+  console.error(`Make sure to build the app for ${platform} using 'npm run make:${platform === 'win32' ? 'win' : platform === 'darwin' ? 'mac' : 'linux'}'`);
+}
 
 // Create an MCP server
 const server = new McpServer({

@@ -20,7 +20,28 @@ npm install
 npm run make
 ```
 
-4. **MCP Configuration**:
+## Cross-Platform Building
+
+The app can be built for Windows, macOS, and Linux platforms:
+
+```bash
+# Build for the current platform only
+npm run make
+
+# Build for specific platforms
+npm run make:win    # Windows only
+npm run make:mac    # macOS only
+npm run make:linux  # Linux only
+
+# Build for all platforms
+npm run make:all
+```
+
+> **Note:** Building for macOS from Windows or Linux requires additional setup:
+> - For code signing, you need an Apple Developer account
+> - For proper macOS builds from non-macOS platforms, consider using a CI service like GitHub Actions
+
+## MCP Configuration
 
 Add to your AI tool configuration (works with Claude Desktop, Cursor, and other MCP clients):
 
