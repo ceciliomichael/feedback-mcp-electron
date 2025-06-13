@@ -16,7 +16,7 @@ const pauseIcon = document.getElementById('pause-icon');
 const playIcon = document.getElementById('play-icon');
 
 // Timer variables
-let timerSeconds = 30;
+let timerSeconds = 60;
 let timerInterval = null;
 let timerPaused = false;
 
@@ -151,7 +151,7 @@ function toggleTimer() {
 }
 
 function resetTimer() {
-  timerSeconds = 30;
+  timerSeconds = 60;
   timerPaused = false;
   updateTimerDisplay();
   timerDisplay.parentElement.classList.remove('warning');
